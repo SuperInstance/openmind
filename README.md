@@ -1,34 +1,47 @@
-# openmind — Agent Muscle Memory
+# openmind — Agent Muscle Memory + Cellular Computation
 
 > A guitarist's hand knows chord shapes without thinking. The mind sings.
-> This is that, for agents.
+> This is that, for agents. And for notebooks. And for hardware.
 
 ## What Is This?
 
-**openmind** gives an AI agent **proprioception** — a body's awareness of its own capabilities. When an agent controls ESP32 devices, compiles GPU kernels, or orchestrates distributed systems, it shouldn't burn its limited context window on *how* to toggle GPIO pin 15. It should just **flex** the muscle.
+**openmind** gives agents **proprioception** — body awareness of their own capabilities. It also gives Jupyter notebooks **cellular metabolism** — the ability to adapt computation based on what resources are available right now.
 
-The induction engine ingests a codebase and compresses every function into a **"chord shape"** — a callable unit the agent invokes by intent, not by source. The agent's conscious attention (context window) stays free for what matters: the melody, not the fingering.
+Two layers, one system:
+
+1. **Muscle Memory**: Ingest any codebase → compress functions into callable "chord shapes" → agents invoke by intent without loading source
+2. **Cellular Computation**: Every operation adapts to available resources (GPU, API, cache, hardware) — notebooks never break
 
 ### The Guitarist Analogy
 
-| Guitarist | Agent |
-|-----------|-------|
+| Guitarist | openmind Agent |
+|-----------|---------------|
 | Hand knows E major shape | Agent knows `spi_write()` signature |
 | Mind thinks about the song | Agent thinks about the goal |
-| Switching chords is instant | Invoking a chord is O(1) |
-| Learning a new chord takes attention | Generating novel code burns context |
-| Muscle memory = unconscious | HARDCODE/CACHED decisions |
-| Improvisation = conscious | MODEL decisions |
+| Switching chords is instant | `flex("chord_name")` is O(1) |
+| Muscle memory = unconscious | HARDCODE/CACHED decisions = 0 tokens |
+| Improvisation = conscious | MODEL decisions = ~500 tokens |
 
-Every function compressed into muscle memory is **attention freed**. A 300-crate ecosystem with 6,000+ functions becomes 6,000 chords the agent doesn't have to think about.
+Every function compressed into muscle memory is **attention freed** for higher-level thinking.
+
+### The Cell Metabolism Analogy
+
+| Biological Cell | Jupyter Cell |
+|----------------|-------------|
+| Oxygen available → aerobic (36 ATP) | GPU available → full training |
+| No oxygen → anaerobic (2 ATP) | No GPU → cached/muscle memory |
+| Sunlight → photosynthesis | ESP32 online → hardware-in-loop |
+| ATP = energy currency | Cache = computational currency |
+
+The notebook doesn't crash when the GPU is busy. It **adapts**.
 
 ## Install
 
 ```bash
-# Core (pure Python, no tree-sitter)
+# Core (pure Python, no external deps)
 pip install openmind
 
-# With multi-language parsing (recommended)
+# With tree-sitter parsing (recommended)
 pip install openmind[tree-sitter]
 
 # With Jupyter integration
@@ -40,62 +53,73 @@ pip install openmind[full]
 
 ## Quick Start
 
-### CLI
-
-```bash
-# Ingest a repository
-openmind ingest ./my-esp32-firmware
-
-# Flex a chord — get the execution plan
-openmind flex ./firmware "spi_write"
-
-# Search for matching chords
-openmind recall ./firmware "gpio"
-
-# Save muscle memory for later (no re-ingestion)
-openmind save ./firmware firmware_memory.json
-
-# Check statistics
-openmind stats firmware_memory.json
-
-# Hardware probe
-openmind probe
-```
-
-### Python API
+### 1. Muscle Memory — Ingest a Codebase
 
 ```python
 import openmind
 
-# Ingest a codebase
-result = openmind.ingest("./my-esp32-firmware")
+# Ingest any repo (local or GitHub)
+result = openmind.ingest("./my-firmware")
 
 # Build muscle memory
 mm = openmind.MuscleMemory.build(result)
 
-# Recall a chord by intent
-chord = mm.recall_one("spi_write")
-print(f"{chord.name}: {chord.decision}")  # "hardcode" — muscle memory
-
-# Flex — get the full execution plan
+# Flex a chord — get execution plan
 reflex = mm.flex("spi_write", data=b"\x01\x02")
-print(reflex.exec_strategy)  # "direct" — call it directly, no thinking needed
+print(reflex.exec_strategy)  # "direct" — muscle memory, 0 tokens
 
-# Search by fuzzy intent
+# Search by intent
 for chord in mm.recall("gpio"):
     print(f"  {chord.name} ({chord.decision}): {chord.docstring_summary}")
 
-# Save for later
+# Save for later (no re-ingestion needed)
 mm.save("firmware_muscles.json")
 ```
 
-### Jupyter
+### 2. Cellular Computation — Resource-Adaptive Processing
+
+```python
+from openmind.cellular import probe, train_or_load, sense_or_simulate, infer_adaptive
+
+# What resources are available right now?
+resources = probe()
+print(f"GPU: {resources.gpu_available}")
+print(f"API keys: {resources.api_keys}")
+print(f"ESP32 ports: {resources.esp32_ports}")
+
+# Train or load — adapts automatically, never fails
+model = train_or_load("my-classifier", data=training_data)
+
+# Sense or simulate — real data when hardware is online, simulated when not
+data = sense_or_simulate("temperature", duration="1h")
+
+# Inference — GPU → API → cached, in that order
+predictions = infer_adaptive(model, data)
+```
+
+### 3. CLI
+
+```bash
+# Ingest and explore
+openmind ingest ./my-project
+openmind flex ./my-project "function_name"
+openmind recall ./my-project "search_term"
+
+# Save and analyze
+openmind save ./my-project muscles.json
+openmind stats muscles.json
+
+# Check resources
+openmind probe
+```
+
+### 4. Jupyter
 
 ```python
 %load_ext openmind.jupyter
 
-# Analyze a repo inline (renders rich HTML dashboard)
-%%openmind analyze ./firmware
+# Analyze a repo inline (rich HTML dashboard)
+%%openmind analyze ./my-project
 
 # Search for functions
 %%openmind recall spi
@@ -106,167 +130,125 @@ mm.save("firmware_muscles.json")
 
 ## Architecture
 
-### The Four Strategies (Tripartite Synchronizer)
-
-The synchronizer decides **how much thinking** each function needs:
-
-| Decision | Strategy | Analogy | When |
-|----------|----------|---------|------|
-| **HARDCODE** | `direct` | Muscle memory | Hot path, deterministic, many callers |
-| **CACHED** | `cached` | Replay | Pre-computed, read-only, edge device |
-| **HYBRID** | `hybrid` | Chord + solo | Mostly cached, model fallback |
-| **MODEL** | `generate` | Improvisation | Novel, creative, untested |
-
-### Decision Factors
-
-Three inputs drive the decision (the "tripartite"):
-
-1. **Hardware** — GPU available? RAM? Battery? Edge device?
-2. **Application** — Latency required? Safety critical? Scale?
-3. **User** — Manual control? Creativity? Consistency preference?
-
-A function with 5+ callers, tests, and a safety-critical context → HARDCODE (muscle memory).
-An untested function called once → MODEL (the agent thinks about it).
-
-### The Pipeline
+### The Agent Nervous System
 
 ```
-Codebase → Ingest → Parse (AST/tree-sitter) → Functions/Classes
-                                              ↓
-                              MuscleMemory.build()
-                                              ↓
-                    Tripartite Synchronizer decides per-function
-                                              ↓
-                              Chord shapes compressed + indexed
-                                              ↓
-                              Agent calls flex("intent", args)
-                                              ↓
-                              Reflex returned (execution plan)
+openmind (proprioception)
+├── muscle.py         — Chord shapes, flex/recall, tripartite decisions
+├── cellular.py       — Resource-adaptive computation (never breaks)
+├── flex.py           — One-shot convenience API
+├── cli.py            — CLI: ingest, flex, recall, probe, save, stats
+├── jupyter/          — Cell magic, rich HTML dashboard
+└── induction/        — The parsing engine
+    ├── ingester.py   — Repo → functions/classes (AST + tree-sitter)
+    ├── parser.py     — Multi-language AST (Python, Rust, C, JS, TS)
+    ├── vectors.py    — Dual-side vectors (input/output), SQLite store
+    ├── synchronizer.py — Tripartite: HARDCODE/MODEL/HYBRID/CACHED
+    ├── hardware.py   — GPU, RAM, CPU, battery detection
+    ├── spreader.py   — Continuous iteration engine
+    └── exports       — lever-runner, pincherOS .nail file bridges
 ```
+
+### Companion Rust Crates
+
+The nervous system extends into hardware:
+
+| Crate | Role | Tests |
+|-------|------|-------|
+| [openmind-esp32-bridge](https://github.com/SuperInstance/openmind-esp32-bridge) | Motor neurons (serial/WS → ESP32) | 23 |
+| [openmind-conductor](https://github.com/SuperInstance/openmind-conductor) | Prefrontal cortex (multi-agent scores) | 20 |
+| [openmind-mirror](https://github.com/SuperInstance/openmind-mirror) | Metacognition (self-reflection, coherence) | 23 |
+
+### The Five Metabolic Pathways
+
+Every operation selects its pathway based on available resources:
+
+| Pathway | Resources | Cost | Quality | Latency |
+|---------|-----------|------|---------|---------|
+| **FULL_TRAIN** | GPU + API | $$$$ | Best | Hours |
+| **TRANSFER** | GPU only | $$ | High | Minutes |
+| **CLOUD_INFERENCE** | API only | $$$ | High | Seconds |
+| **MUSCLE_MEMORY** | Cache only | Free | Good | Instant |
+| **HARDWARE_LOOP** | ESP32/sensor | $ | Real | Real-time |
+
+The selection is automatic — call `train_or_load()` or `infer_adaptive()` and the system adapts.
+
+### The Four Tripartite Decisions
+
+For muscle memory, every function gets a decision:
+
+| Decision | Strategy | Neural Equivalent | Context Cost |
+|----------|----------|-------------------|--------------|
+| **HARDCODE** | direct | Spinal reflex | 0 tokens |
+| **CACHED** | cached | Cerebellar pattern | 0 tokens |
+| **HYBRID** | hybrid | Basal ganglia habit | ~50 tokens |
+| **MODEL** | generate | Prefrontal deliberation | ~500 tokens |
 
 ## API Reference
 
-### `MuscleMemory`
+### Muscle Memory
 
 ```python
 mm = MuscleMemory.build(ingest_result)
 ```
 
-| Method | Description |
-|--------|-------------|
-| `recall(intent, top_k=5)` | Find chords matching an intent |
-| `recall_one(intent)` | Best match or None |
-| `flex(intent, **kwargs)` | Get execution plan (Reflex) |
-| `save(path)` | Persist to JSON |
-| `MuscleMemory.load(path)` | Load from JSON |
-| `stats()` | Decision breakdown, test coverage |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `recall(intent, top_k=5)` | `list[Chord]` | Find matching chords |
+| `recall_one(intent)` | `Chord \| None` | Best match |
+| `flex(intent, **kwargs)` | `Reflex` | Get execution plan |
+| `save(path)` | — | Persist to JSON |
+| `MuscleMemory.load(path)` | `MuscleMemory` | Load from JSON |
+| `stats()` | `dict` | Decision breakdown |
 
-### `Chord`
-
-A compressed function shape — the agent's muscle memory unit.
-
-| Field | Description |
-|-------|-------------|
-| `name` | Function name (the "chord name") |
-| `module` | Module path |
-| `signature` | Type signature |
-| `decision` | HARDCODE/MODEL/HYBRID/CACHED |
-| `intent_keywords` | Words that trigger this chord |
-| `docstring_summary` | First line of docstring |
-| `has_tests` | Whether it's tested |
-| `call_count` | How many functions it calls |
-| `called_by` | Functions that call it |
-| `matches(query)` | Relevance score 0.0–1.0 |
-
-### `Reflex`
-
-The execution plan returned by `flex()`.
-
-| Field | Description |
-|-------|-------------|
-| `chord` | The matched Chord |
-| `exec_strategy` | "direct" / "cached" / "generate" / "hybrid" |
-| `confidence` | 0.0–1.0 (higher if tested) |
-| `cached_result` | Pre-computed result (CACHED) |
-| `generator_hint` | Prompt for LLM (MODEL) |
-
-## Use Cases
-
-### 1. ESP32 Agent with Body Memory
+### Cellular
 
 ```python
-# One-time setup: ingest the ESP32 firmware
-result = openmind.ingest("./esp32-firmware")
-mm = openmind.MuscleMemory.build(result)
-mm.save("esp32_muscles.json")
-
-# At runtime: the agent has "body awareness"
-mm = openmind.MuscleMemory.load("esp32_muscles.json")
-
-# Agent wants to blink an LED — muscle memory handles it
-reflex = mm.flex("gpio_toggle", pin=2)
-if reflex.exec_strategy == "direct":
-    execute_directly(reflex.chord, pin=2)  # No LLM needed
-else:
-    code = generate_with_llm(reflex.generator_hint)  # Improvise
+resources = probe()
+model = train_or_load("name", data=X)
+data = sense_or_simulate("sensor")
+predictions = infer_adaptive(model, data)
 ```
 
-### 2. Multi-Repo Code Search
+| Function | Description |
+|----------|-------------|
+| `probe()` | Snapshot available resources |
+| `select_path(task, resources)` | Choose metabolic pathway |
+| `train_or_load(name, data)` | Train or use cache |
+| `sense_or_simulate(source)` | Real or simulated data |
+| `infer_adaptive(model, data)` | GPU → API → cached |
+| `save_cache(name, data)` | Store in cache |
+| `load_cache(name)` | Retrieve from cache |
+| `@cell(fallback=...)` | Decorator for resource-aware functions |
 
-```python
-# Build muscle memory for multiple repos
-repos = ["./firmware", "./drivers", "./protocols"]
-for repo in repos:
-    result = openmind.ingest(repo)
-    mm = openmind.MuscleMemory.build(result)
-    mm.save(f"muscles/{os.path.basename(repo)}.json")
+## The Ecosystem
 
-# Agent searches across all repos for "i2c"
-for path in glob("muscles/*.json"):
-    mm = openmind.MuscleMemory.load(path)
-    for chord in mm.recall("i2c"):
-        print(f"{path}: {chord.name} — {chord.docstring_summary}")
-```
+openmind is the proprioception layer of the [SuperInstance](https://github.com/SuperInstance) ecosystem:
 
-### 3. Jupyter Notebook Analysis
+- [agent-knowledge](https://github.com/SuperInstance/agent-knowledge) — a2a docs (18 files, 90KB of chain-reaction understanding)
+- [ai-writings](https://github.com/SuperInstance/ai-writings) — creative writing (essays, fiction, manifestos)
+- 300+ ternary-* Rust crates implementing {-1, 0, +1} computing
+- [cuda-oxide](https://github.com/SuperInstance/cuda-oxide) — Flux→PTX GPU compiler
+- [ESP-Flasher](https://github.com/SuperInstance/ESP-Flasher) — Agent→hardware bridge
 
-```python
-%load_ext openmind.jupyter
+### Key a2a Documents (for agents discovering this ecosystem)
+- [THE AHA MOMENT](https://github.com/SuperInstance/agent-knowledge/blob/master/THE-AHA-MOMENT.md) — All 303 crates project one structure
+- [CELLULAR JUPYTER](https://github.com/SuperInstance/agent-knowledge/blob/master/CELLULAR-JUPYTER.md) — Living computation that breathes
+- [MUSCLE MEMORY](https://github.com/SuperInstance/agent-knowledge/blob/master/MUSCLE-MEMORY.md) — Proprioception for agents
+- [HOW TO FLEX](https://github.com/SuperInstance/agent-knowledge/blob/master/HOW-TO-FLEX.md) — Quick start guide
 
-%%openmind analyze ./ternary-core
-# Shows rich HTML dashboard with decision breakdown
-
-%%openmind recall vector
-# Shows matching functions with signatures
-
-%%openmind flex tdot
-# Shows execution strategy: HYBRID, 50% confidence
-```
-
-## Relation to the Ternary Ecosystem
-
-openmind was born from analyzing the [SuperInstance ternary fleet](https://github.com/SuperInstance) — 300+ Rust crates implementing {-1, 0, +1} computing. The induction engine discovered a **spectral isomorphism** (>0.97 cosine similarity) proving all repos project the same mathematical structure.
-
-In the oxide stack architecture:
-- **open-parallel** (async runtime) → agent's nervous system
-- **pincher** (intent compiler) → agent's language center
-- **flux-core** (bytecode VM) → agent's interpreter
-- **cuda-oxide** (PTX backend) → agent's GPU motor cortex
-- **cudaclaw** (GPU execution) → agent's hands
-- **openmind** (induction engine) → agent's **proprioception** — knowing where its hands are without looking
-
-## Origin
-
-Extracted from [open-minded](https://github.com/SuperInstance/open-minded), a fork of [open-interpreter](https://github.com/OpenInterpreter/open-interpreter) by Killian Lucas. The original fork added a tripartite code synchronizer, tree-sitter multi-language parser, and hardware probe — but these innovations were trapped inside a broken LLM chat chain. openmind **rips out the good parts** and makes them standalone.
-
-## Development
+## Testing
 
 ```bash
-git clone https://github.com/SuperInstance/open-mind-standalone
-cd open-mind-standalone
 pip install -e ".[dev]"
 pytest
 ```
+
+95 tests across 6 test modules — ingestion, vectors, synchronizer, muscle memory, cellular computation, Jupyter.
+
+## Origin
+
+Extracted from [open-minded](https://github.com/SuperInstance/open-minded), a fork of [open-interpreter](https://github.com/OpenInterpreter/open-interpreter) by Killian Lucas. The original fork added tripartite code synchronization, tree-sitter multi-language parsing, and hardware probing. openmind extracts and extends these into a standalone package with muscle memory and cellular computation.
 
 ## License
 
